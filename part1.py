@@ -204,8 +204,8 @@ def print_q():
                             if cue[bx][by][vx][vy][py][a] != 0:
                                 print(state_str((bx, by, vx, vy, py)) + ": " + str(cue[bx][by][vx][vy][py][a]))
 def alpha(s, a):
-    # return c / (c + num_lookup(s, a))
-    return 0.3
+    return c / (c + num_lookup(s, a))
+    # return 0.3
             
 def play():
     initial_s = Pong(0.5, 0.5, 0.03, 0.01, 0.5 - paddle_height / 2)
@@ -330,42 +330,28 @@ def qlearn2():
         s = s_next
     
     return
-
-def qtrain():
-    for i in range(100000):
-        qlearn2()
-        # num_sa = np.zeros((12, 12, 3, 3, 12, 3)) # 12 x values, 12 y values, 2 x velocities, 3 y velocities, 12 paddle locations, 3 actions
-        if i % 1000 == 0:
-            print(i)
             
-def sarsa():
+def sarsa(initial_a):
     initial_s = Pong(0.5, 0.5, 0.03, 0.01, 0.5 - paddle_height / 2)
     
     s = initial_s
+    a = initial_a
     while True:
         # print(state_str(s.discrete_state()))
         # print(state_str(s.state()))
         # print("")
         
         a_max = float('-inf')
-        a = None
-        s_next = None
+        s_next = s.step(a)
+        a_next = None
         for a_prime in [-1, 0, 1]:
-            s_prime = s.step(a_prime)
-            # if num_lookup(s, a_prime) == 10:
-                # pdb.set_trace()
-            temp = exploration(s, a_prime)
+            temp = exploration(s_next, a_prime)
             if temp > a_max:
                 a_max = temp
-                a = a_prime
+                a_next = a_prime
                 
-        s_next = s.step(a)
         num_iter(s, a)
-        q_s_next = float('-inf')
-        for a_prime in [-1, 0, 1]:
-            temp = q_lookup(s_next, a_prime)
-            if temp > q_s_next:
-                q_s_next = temp
+        q_s_next = q_lookup(s_next, a_next)
                 
         # pdb.set_trace()
         q_new = q_lookup(s, a) + alpha(s, a) * (s.reward + discount * q_s_next - q_lookup(s, a))
@@ -378,5 +364,20 @@ def sarsa():
             break
         
         s = s_next
+        a = a_next
     
     return
+
+def qtrain():
+    for i in range(100000):
+        qlearn2()
+        # num_sa = np.zeros((12, 12, 3, 3, 12, 3)) # 12 x values, 12 y values, 2 x velocities, 3 y velocities, 12 paddle locations, 3 actions
+        if i % 1000 == 0:
+            print(i)
+            
+def strain():
+    for i in range(33333):
+        for ia in [-1, 0, 1]:
+            sarsa(ia)
+        if i % 1000 == 0:
+            print(i)
