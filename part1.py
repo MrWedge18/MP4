@@ -210,6 +210,7 @@ def alpha(s, a):
 def play():
     initial_s = Pong(0.5, 0.5, 0.03, 0.01, 0.5 - paddle_height / 2)
     nine_bounces = 0
+    total_bounces = 0
     
     for i in range(200):
         s = initial_s
@@ -233,6 +234,7 @@ def play():
             print("")
             
     print(nine_bounces)
+    print(total_bounces / 200.)
             
 def qlearn():
     initial_s = Pong(0.5, 0.5, 0.03, 0.01, 0.5 - paddle_height / 2)
@@ -275,6 +277,7 @@ def qlearn():
                 
         # pdb.set_trace()
         q_new = q_lookup(s, a) + alpha(s, a) * (s.reward + discount * q_s_next - q_lookup(s, a))
+        
         q_set(s, a, q_new)
         
         # if s.bounce >= 30:
