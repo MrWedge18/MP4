@@ -2,7 +2,6 @@ import math
 import numpy as np
 import pdb
 import random
-from collections import deque
 
 paddle_height = 0.2
 discount = 0.5
@@ -12,6 +11,10 @@ max_iterations = 10000
 cue = np.zeros((12, 12, 3, 3, 12, 3)) # 12 x values, 12 y values, 2 x velocities, 3 y velocities, 12 paddle locations, 3 actions
 num_sa = np.zeros((12, 12, 3, 3, 12, 3)) # 12 x values, 12 y values, 2 x velocities, 3 y velocities, 12 paddle locations, 3 actions
 
+# Object representing state of game.
+# parent used for debugging.
+# bounce is total number of times ball bounces off paddle
+# reward is reward of current state
 class Pong:
     def __init__(self, ball_x, ball_y, velocity_x, velocity_y, paddle_y, reward = 0, parent=None, bounce=0):
         self.reward = reward
@@ -38,6 +41,8 @@ class Pong:
         else:
             self.paddle_y = paddle_y
             
+    # Take a step and return the following state
+    # Passes in 1 for reward if a bounce occured during the step
     def step(self, move):
         new_paddle_y = self.paddle_y
         new_ball_x = self.ball_x
@@ -107,17 +112,18 @@ class Pong:
                 
         return Pong(new_ball_x, new_ball_y, new_velocity_x, new_velocity_y, new_paddle_y, new_reward, self, new_bounce)
             
+    # Return True of ball is past paddle
     def game_over(self):
-        if self.ball_x > 1:
-            return True
-        else:
-            return False
+        return self.ball_x > 1
     
+    # Return tuple representing the state
+    # (0, 0, 0, 0, 0) represents terminal state
     def state(self):
         if self.ball_x > 1:
             (0, 0, 0, 0, 0)
         return (self.ball_x, self.ball_y, self.velocity_x, self.velocity_y, self.paddle_y)
     
+    # Discretize and returns the state
     def discrete_state(self):
         if self.ball_x > 1:
             return (0, 0, 0, 0, 0)
@@ -150,15 +156,18 @@ class Pong:
             
         return (int(ball_x), int(ball_y), int(velocity_x), int(velocity_y), int(paddle_y))
     
+# Just converts the state tuple into a string
 def state_str((bx, by, vx, vy, py)):
         return "(" + str(bx) + ", " + str(by) + ", " + str(vx) + ", " + str(vy) + ", " + str(py) + ")"
     
+# Lookup the number of times a state and action were seen
 def num_lookup(s, a):
     ds = s.discrete_state()
     if ds == (0, 0, 0, 0, 0):
         return num_sa[0][0][0][0][0][0]
     return num_sa[ds[0]][ds[1]][ds[2] + 1][ds[3] + 1][ds[4]][a + 1]
 
+# Update the number of times a state and action were seen
 def num_set(s, a, val):
     ds = s.discrete_state()
     if ds == (0, 0, 0, 0, 0):
@@ -166,6 +175,7 @@ def num_set(s, a, val):
     else:
         num_sa[ds[0]][ds[1]][ds[2] + 1][ds[3] + 1][ds[4]][a + 1] = val
     
+# Increment the nubmer of times a state and action were seen
 def num_iter(s, a):
     ds = s.discrete_state()
     if ds == (0, 0, 0, 0, 0):
@@ -225,76 +235,22 @@ def play():
                     
             s = s.step(a)
             
-        print("Game Over!")
-        print("Bounces: " + str(s.bounce))
-        if s.bounce < 9:
-            print("qlearn is bad and you should feel bad\n")
-        else:
-            nine_bounces += 1
-            print("")
+        # print("Game Over!")
+        # print("Bounces: " + str(s.bounce))
+        total_bounces += s.bounce
+        # if s.bounce < 9:
+            # print("qlearn is bad and you should feel bad\n")
+        # else:
+            # nine_bounces += 1
+            # print("")
             
-    print(nine_bounces)
     print(total_bounces / 200.)
-            
+
 def qlearn():
     initial_s = Pong(0.5, 0.5, 0.03, 0.01, 0.5 - paddle_height / 2)
     
-    stack = deque()
-    stack.append(initial_s)
-    
-    while stack:
-        s = stack.pop()
-        
-        # print(state_str(s.discrete_state()))
-        # print(state_str(s.state()))
-        # print("")
-        
-        a_max = float('-inf')
-        a = None
-        s_next = None
-        add_back = False
-        for a_prime in [-1, 0, 1]:
-            s_prime = s.step(a_prime)
-            if num_lookup(s, a_prime) == 0 and s.reward == 0:
-                add_back = True
-            # if num_lookup(s, a_prime) == 10:
-                # pdb.set_trace()
-            temp = exploration(s, a_prime)
-            if temp > a_max:
-                a_max = temp
-                a = a_prime
-                
-        if add_back:
-            stack.append(s)
-                
-        s_next = s.step(a)
-        num_iter(s, a)
-        q_s_next = float('-inf')
-        for a_prime in [-1, 0, 1]:
-            temp = q_lookup(s_next, a_prime)
-            if temp > q_s_next:
-                q_s_next = temp
-                
-        # pdb.set_trace()
-        q_new = q_lookup(s, a) + alpha(s, a) * (s.reward + discount * q_s_next - q_lookup(s, a))
-        
-        q_set(s, a, q_new)
-        
-        # if s.bounce >= 30:
-            # print("bounce: " + str(s.bounce))
-        
-        if not s.game_over() and s.bounce < 9:
-            stack.append(s_next)
-        elif s.bounce == 9:
-            break
-    
-    
-    return
-
-def qlearn2():
-    initial_s = Pong(0.5, 0.5, 0.03, 0.01, 0.5 - paddle_height / 2)
-    
     s = initial_s
+    
     while True:
         # print(state_str(s.discrete_state()))
         # print(state_str(s.state()))
@@ -328,21 +284,28 @@ def qlearn2():
             # print("bounce: " + str(s.bounce))
         
         if s.game_over():
-            break
+            return s.bounce
         
         s = s_next
     
-    return
             
-def sarsa(initial_a):
+def sarsa():
     initial_s = Pong(0.5, 0.5, 0.03, 0.01, 0.5 - paddle_height / 2)
     
     s = initial_s
-    a = initial_a
+    a_max = float('-inf')
+    a = None
+    for a_prime in [-1, 0, 1]:
+        temp = exploration(s, a_prime)
+        if temp > a_max:
+            a_max = temp
+            a = a_prime
+                
     while True:
         # print(state_str(s.discrete_state()))
         # print(state_str(s.state()))
         # print("")
+        
         
         a_max = float('-inf')
         s_next = s.step(a)
@@ -364,7 +327,7 @@ def sarsa(initial_a):
             # print("bounce: " + str(s.bounce))
         
         if s.game_over():
-            break
+            return s.bounce
         
         s = s_next
         a = a_next
@@ -372,15 +335,22 @@ def sarsa(initial_a):
     return
 
 def qtrain():
-    for i in range(100000):
-        qlearn2()
-        # num_sa = np.zeros((12, 12, 3, 3, 12, 3)) # 12 x values, 12 y values, 2 x velocities, 3 y velocities, 12 paddle locations, 3 actions
-        if i % 1000 == 0:
-            print(i)
+    total_bounces = 0.0
+    for i in range(50000):
+        total_bounces += qlearn()
+        if (i + 1) % 500 == 0:
+            mean = total_bounces / 500
+            print(str(i + 1) + '\t' + str(mean))
+            total_bounces = 0
             
 def strain():
-    for i in range(33333):
-        for ia in [-1, 0, 1]:
-            sarsa(ia)
-        if i % 1000 == 0:
-            print(i)
+    total_bounces = 0.0
+    for i in range(50000):
+        total_bounces += sarsa()
+        if (i + 1) % 500 == 0:
+            mean = total_bounces / 500
+            print(str(i + 1) + '\t' + str(mean))
+            total_bounces = 0
+            
+qtrain()
+play() 
